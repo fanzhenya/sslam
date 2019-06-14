@@ -1,0 +1,2 @@
+add_executable(test_visual_odometry test_visual_odometry.cpp)
+target_link_libraries(test_visual_odometry sslam)
