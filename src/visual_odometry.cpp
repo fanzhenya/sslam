@@ -39,8 +39,11 @@ void sslam::VisualOdometry::Process(Frame::Ptr frame, Mat* canvas) {
             auto kpts = ExtractKeyPoints(frame->color_);
             auto descs = ComputeDescriptors(kpts, frame->color_);
             auto matches = MatchWithReferenceFrame(descs);
-            auto estimation = EstimatePosePnp(kpts, matches);
+            if (canvas) {
+                cv::drawMatches(ref_frame_->color_, ref_keypoints_, frame->color_, kpts, matches, *canvas);
+            }
 
+            auto estimation = EstimatePosePnp(kpts, matches);
             if (estimation.score > 0) {
                 frame->T_c_w_ = estimation.T_c_r * ref_frame_->T_c_w_;
                 ref_frame_ = frame;
@@ -54,9 +57,6 @@ void sslam::VisualOdometry::Process(Frame::Ptr frame, Mat* canvas) {
                 }
             }
 
-            if (canvas) {
-                cv::drawMatches(ref_frame_->color_, ref_keypoints_, frame->color_, kpts, matches, *canvas);
-            }
             break;
         }
         default:
