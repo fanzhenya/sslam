@@ -37,10 +37,11 @@ double Frame::GetDepth(cv::KeyPoint const &p) {
     vector<int> dx{0, 1, 0, -1, 0}, dy{0, 0, 1, 0, -1};
     for (int k = 0; k < dx.size(); k++) {
         int i = cvRound(p.pt.x) + dx[k], j = cvRound(p.pt.y) + dy[k];
-        int d = depth_.at<uchar>(i, j);
+        auto d = depth_.at<ushort>(j, i);
         if (d != 0)
             return double(d) / camera_->depth_scale_;
     }
+    return -1.0;
 }
 
 }

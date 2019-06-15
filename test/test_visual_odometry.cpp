@@ -34,9 +34,10 @@ int main(int argc, char** argv) {
     // visualization
     cv::viz::Viz3d vis("Visual Odometry");
     cv::viz::WCoordinateSystem world_coor(1.0), camera_coor(0.5);
-    // cv::Point3d cam_pos( 3, 3, 3 ), cam_focal_point(0,0,0), cam_y_dir(1,0,0);
-    // cv::Affine3d cam_pose = cv::viz::makeCameraPose( cam_pos, cam_focal_point, cam_y_dir );
-    // vis.setViewerPose( cam_pose );
+
+    cv::Point3d cam_pos( -1.0, -1.0, -1.0 ), cam_focal_point(0,0,0), cam_y_dir(0,1,0);
+    cv::Affine3d cam_pose = cv::viz::makeCameraPose( cam_pos, cam_focal_point, cam_y_dir );
+    vis.setViewerPose( cam_pose );
 
     world_coor.setRenderingProperty(cv::viz::LINE_WIDTH, 2.0);
     camera_coor.setRenderingProperty(cv::viz::LINE_WIDTH, 1.0);
@@ -50,17 +51,25 @@ int main(int argc, char** argv) {
         auto canvas = frame->color_.clone();
         vo.Process(frame, &canvas);
 
-        //auto M = vis.getWidgetPose("Camera");
-        //cout << M.matrix << endl;
-        //auto M2 = M.rotate(cv::Affine3d::Mat3(0.707, -0.707, 0,
-        //                                      0.707, 0.707,  0,
-        //                                      0,     0,      1.0 ));
-        //auto M2 = M.translate(cv::Affine3d::Vec3(0.01,0.01,0.01));
-        //vis.setWidgetPose("Camera", M2);
-
         cv::imshow("color", frame->color_);
-        //cv::imshow("canvas", canvas);
+        cv::imshow("canvas", canvas);
         cv::waitKey(1);
+
+        auto pose = frame->T_c_w_.inverse();
+        cout << pose << endl;
+
+        cv::Affine3d M(
+            cv::Affine3d::Mat3(
+                pose.rotation_matrix()(0,0), pose.rotation_matrix()(0,1), pose.rotation_matrix()(0,2),
+                pose.rotation_matrix()(1,0), pose.rotation_matrix()(1,1), pose.rotation_matrix()(1,2),
+                pose.rotation_matrix()(2,0), pose.rotation_matrix()(2,1), pose.rotation_matrix()(2,2)
+            ),
+            cv::Affine3d::Vec3(
+                pose.translation()(0,0), pose.translation()(1,0), pose.translation()(2,0)
+            )
+        );
+        // show the map and the camera pose
+        vis.setWidgetPose("Camera", M);
         vis.spinOnce(1, false);
     }
     return 0;

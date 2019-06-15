@@ -36,6 +36,16 @@ public:
                           config.get<float>("camera.depth_scale")));
     }
 
+
+    // return camera intrinsics in 3x3 matrix
+    cv::Mat GetK() const {
+        return (cv::Mat_<double>(3,3) <<
+                fx_, 0, cx_,
+                0, fy_, cy_,
+                0, 0,   1
+        );
+    }
+
     // coordinate transform: world, camera, pixel
     // Vector3d world2camera( const Vector3d& p_w, const SE3& T_c_w ) {return T_c_w * p_w};
     // Vector3d camera2world( const Vector3d& p_c, const SE3& T_c_w );
@@ -67,7 +77,7 @@ public:
     }
 
 private:
-    static std::unordered_map<std::string, Ptr> camera_flyweights_;
+    //static std::unordered_map<std::string, Ptr> camera_flyweights_;
 };
 
 }
