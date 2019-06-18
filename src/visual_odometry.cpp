@@ -5,6 +5,21 @@
 #include <opencv/cv.hpp>
 #include "sslam/visual_odometry.hpp"
 
+#include "g2o_types.hpp"
+#include <g2o/core/base_vertex.h>
+#include <g2o/core/block_solver.h>
+#include <g2o/core/optimization_algorithm_levenberg.h>
+#include <g2o/solvers/dense/linear_solver_dense.h>
+
+#include <g2o/core/base_vertex.h>
+#include <g2o/core/base_unary_edge.h>
+#include <g2o/core/block_solver.h>
+#include <g2o/core/optimization_algorithm_levenberg.h>
+#include <g2o/types/sba/types_six_dof_expmap.h>
+#include <g2o/solvers/dense/linear_solver_dense.h>
+#include <g2o/core/robust_kernel.h>
+#include <g2o/core/robust_kernel_impl.h>
+
 using namespace std;
 
 sslam::VisualOdometry::VisualOdometry(const sslam::Config &config)
@@ -98,8 +113,8 @@ void sslam::VisualOdometry::SetRef3dPoints(const vector <cv::KeyPoint> &keypoint
 
 std::vector<cv::DMatch> sslam::VisualOdometry::MatchWithReferenceFrame(Mat const &descriptors) {
     vector<cv::DMatch> matches;
-    //auto matcher = cv::FlannBasedMatcher();
-    auto matcher = cv::BFMatcher(cv::NORM_HAMMING);
+    auto matcher = cv::FlannBasedMatcher(new cv::flann::LshIndexParams(5,10,2));
+    //auto matcher = cv::BFMatcher(cv::NORM_HAMMING);
     matcher.match(ref_descriptors_, descriptors, matches);
 
     // filter
@@ -125,6 +140,7 @@ sslam::VisualOdometry::EstimatePosePnp(std::vector<cv::KeyPoint> const &keypoint
 
     Mat r_vec, t_vec, inliers;
     cv::solvePnPRansac(ref, cur, ref_frame_->camera_->GetK(), Mat{}, r_vec, t_vec, false, 100, 4.0, 0.99, inliers);
+    cout << "PnpRansac inlisers: " << inliers.rows << endl;
 
     SE3 T(
             // rot_x, rot_y, rot_z
@@ -132,11 +148,57 @@ sslam::VisualOdometry::EstimatePosePnp(std::vector<cv::KeyPoint> const &keypoint
             Vector3d(t_vec.at<double>(0, 0), t_vec.at<double>(1, 0),  t_vec.at<double>(2, 0))
     );
 
-    cout << "PnpRansac inlisers: " << inliers.rows << endl;
+    cout << "before BA " << T << endl;
+    T = OptimizePoseBundleAdjustment(ref, cur, inliers, T);
+    cout << "after  BA " << T << endl;
+
     double score = inliers.rows < min_inliers_ ? 0 : // too few inliners
             T.log().norm() > 5.0 ? 0 : 1; // motion is too large
 
     bool is_significantly_changed = (cv::norm(r_vec) > key_frame_min_rot_) && (cv::norm(t_vec) > key_frame_min_trans_);
 
     return {T, score, is_significantly_changed};
+}
+
+SE3 sslam::VisualOdometry::OptimizePoseBundleAdjustment(const vector<cv::Point3f> &ref_pts_3d,
+                                                        const vector<cv::Point2d> &cur_pts_2d,
+                                                        Mat const &inliers, SE3 const &T) const {
+    // using bundle adjustment to optimize the pose
+    typedef g2o::BlockSolver<g2o::BlockSolverTraits<6,2>> Block;
+    Block::LinearSolverType* linearSolver = new g2o::LinearSolverDense<Block::PoseMatrixType>();
+    Block* solver_ptr = new Block( linearSolver );
+    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg ( solver_ptr );
+    g2o::SparseOptimizer optimizer;
+    optimizer.setAlgorithm ( solver );
+
+    g2o::VertexSE3Expmap* pose = new g2o::VertexSE3Expmap();
+    pose->setId ( 0 );
+    pose->setEstimate ( g2o::SE3Quat (
+            T.rotation_matrix(),
+            T.translation()
+    ) );
+    optimizer.addVertex ( pose );
+
+    // edges
+    for ( int i=0; i<inliers.rows; i++ ) {
+        int index = inliers.at<int>(i,0);
+        // 3D -> 2D projection
+        EdgeProjectXYZ2UVPoseOnly* edge = new EdgeProjectXYZ2UVPoseOnly();
+        edge->setId(i);
+        edge->setVertex(0, pose);
+        edge->camera_ = ref_frame_->camera_.get();
+        edge->point_ = Vector3d( ref_pts_3d[index].x, ref_pts_3d[index].y, ref_pts_3d[index].z );
+        edge->setMeasurement( Vector2d(cur_pts_2d[index].x, cur_pts_2d[index].y) );
+        edge->setInformation( Eigen::Matrix2d::Identity() );
+        optimizer.addEdge( edge );
+    }
+
+    optimizer.initializeOptimization();
+    optimizer.setVerbose(true);
+    optimizer.optimize(10);
+
+    return SE3 (
+            pose->estimate().rotation(),
+            pose->estimate().translation()
+    );
 }

@@ -50,6 +50,8 @@ private:
     };
     PoseEstimationResult
     EstimatePosePnp(std::vector<cv::KeyPoint> const &keypoints, std::vector<cv::DMatch> const &matches);
+    SE3 OptimizePoseBundleAdjustment(const std::vector<cv::Point3f> &ref_pts_3d,
+                                     const std::vector<cv::Point2d> &cur_pts_2d, Mat const &inliers, SE3 const&T) const;
 
     // parameters read from config
     int num_of_features_;   // number of features

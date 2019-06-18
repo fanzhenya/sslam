@@ -51,11 +51,11 @@ public:
     // Vector3d camera2world( const Vector3d& p_c, const SE3& T_c_w );
 
 
-    // normalized camera coordinate => pixel coordinate
+    // camera coordinate => pixel coordinate
     Vector2d camera2pixel( const Vector3d& p_c ) {
         return {
-            fx_ * p_c(0, 0) + cx_,
-            fy_ * p_c(1, 0) + cy_
+            fx_ * p_c(0, 0) / p_c(2, 0) + cx_,
+            fy_ * p_c(1, 0) / p_c(2, 0) + cy_
         };
     }
 

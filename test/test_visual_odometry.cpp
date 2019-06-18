@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     cv::viz::Viz3d vis("Visual Odometry");
     cv::viz::WCoordinateSystem world_coor(1.0), camera_coor(0.5);
 
-    cv::Point3d cam_pos( -1.0, -1.0, -1.0 ), cam_focal_point(0,0,0), cam_y_dir(0,1,0);
+    cv::Point3d cam_pos(0, -3.0, -5.0), cam_focal_point(0,0,0), cam_y_dir(0,1,0);
     cv::Affine3d cam_pose = cv::viz::makeCameraPose( cam_pos, cam_focal_point, cam_y_dir );
     vis.setViewerPose( cam_pose );
 

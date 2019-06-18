@@ -1,6 +1,10 @@
 add_library(sslam STATIC
         visual_odometry.cpp
         frame.cpp
+        config.cpp
+        camera.cpp
+        g2o_types.cpp
+        g2o_types.hpp
         )
 
 target_include_directories(sslam
