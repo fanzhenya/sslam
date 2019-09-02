@@ -42,25 +42,7 @@ std::ostream &operator<<(std::ostream &os, const Frame &frame) {
     return os;
 }
 
-std::vector<cv::DMatch> Frame::MatchWith(cv::Mat const& descriptors) {
-    vector<cv::DMatch> matches;
-    auto matcher_ = cv::FlannBasedMatcher(new cv::flann::LshIndexParams(5,10,2));
-    matcher_.match(descriptors, descriptors_, matches);
-
-    // filter
-    vector<cv::DMatch> ret;
-    auto match_ratio = config_.get<float>("match_ratio");
-    auto min_dis = min_element(matches.begin(), matches.end())->distance;
-    for (auto& m : matches) {
-        if (m.distance < max(min_dis * match_ratio, 30.f)) {
-            ret.push_back(m);
-        }
-    }
-    cout << "good matches: " << ret.size() << endl;
-    return ret;
-}
-
-double Frame::GetDepth(cv::KeyPoint const &p) const {
+double Frame::GetDepthAt(cv::KeyPoint const &p) const {
     vector<int> dx{0, 1, 0, -1, 0}, dy{0, 0, 1, 0, -1};
     for (int k = 0; k < dx.size(); k++) {
         int i = cvRound(p.pt.x) + dx[k], j = cvRound(p.pt.y) + dy[k];

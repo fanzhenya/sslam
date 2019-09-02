@@ -39,7 +39,8 @@ void sslam::VisualOdometry::Process(Frame::Ptr frame) {
             break;
         }
         case kTracking: {
-            auto matches = frame->MatchWith(map_->GetAllDescriptors());
+            auto matches = map_->MatchWith(*frame);
+            cout << "good matches: " << matches.size() << endl;
 
             if (ui_)
                 ui_->DrawMatches(matches, map_->GetAllUVs(), 
@@ -56,8 +57,6 @@ void sslam::VisualOdometry::Process(Frame::Ptr frame) {
                 frame->T_c_w_ = estimation.T_c_r * ref_frame_->T_c_w_;
                 ref_frame_ = frame;
                 map_->AddObservation(*frame);
-                // SetRef3dPoints(frame->kpts_, frame->descriptors_);
-                
                 num_lost_ = 0;
             } else {
                 num_lost_++;

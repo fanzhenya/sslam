@@ -45,7 +45,7 @@ public:
 
     std::vector<cv::DMatch> MatchWith(cv::Mat const& descriptors);
 
-    double GetDepth(cv::KeyPoint const& p) const;
+    double GetDepthAt(cv::KeyPoint const& p) const;
 
     friend std::ostream &operator<<(std::ostream &os, const Frame &frame);
 
