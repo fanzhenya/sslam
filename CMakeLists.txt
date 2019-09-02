@@ -11,8 +11,8 @@ set( LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib )
 
 ############### dependencies ######################
 # Eigen
-#include_directories( "/usr/include/eigen3" )
 find_package(Eigen3 REQUIRED)
+include_directories( "/usr/include/eigen3" )
 message("Found Eigen3: ${EIGEN3_INCLUDE_DIRS}")
 
 # OpenCV
@@ -27,10 +27,17 @@ find_package( Sophus REQUIRED )
 find_package( G2O REQUIRED )
 #include_directories( ${G2O_INCLUDE_DIRS} )
 
+# Pangolinf
+find_package( Pangolin )
+# include_directories( ${Pangolin_INCLUDE_DIRS})
+
+message(${EIGEN3_INCLUDE_DIRS})
+
 set( THIRD_PARTY_LIBS 
     ${OpenCV_LIBS}
     ${Sophus_LIBRARIES}
     g2o_core g2o_stuff g2o_types_sba
+    ${Pangolin_LIBRARIES}
 )
 ############### source and test ######################
 #include_directories( ${PROJECT_SOURCE_DIR}/include )

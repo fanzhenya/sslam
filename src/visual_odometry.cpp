@@ -22,47 +22,42 @@
 
 using namespace std;
 
-sslam::VisualOdometry::VisualOdometry(const sslam::Config &config)
-        : state_(kInit) {
-    num_of_features_    = config.get<int> ( "number_of_features" );
-    scale_factor_       = config.get<double> ( "scale_factor" );
-    level_pyramid_      = config.get<int> ( "level_pyramid" );
-    match_ratio_        = config.get<float> ( "match_ratio" );
+sslam::VisualOdometry::VisualOdometry(Config const& config, std::shared_ptr<Map> map, std::shared_ptr<Ui> ui)
+        : state_(kInit), map_(map), ui_(ui) {
     max_num_lost_       = config.get<int> ( "max_num_lost" );
     min_inliers_        = config.get<int> ( "min_inliers" );
     key_frame_min_rot_   = config.get<double> ( "keyframe_rotation" );
     key_frame_min_trans_ = config.get<double> ( "keyframe_translation" );
-    orb_ = cv::ORB::create ( num_of_features_, scale_factor_, level_pyramid_ );
 }
 
-void sslam::VisualOdometry::Process(Frame::Ptr frame, Mat* canvas) {
+void sslam::VisualOdometry::Process(Frame::Ptr frame) {
     switch (state_) {
         case kInit: {
             ref_frame_ = frame;
-            // map_->InsertKeyFrame
-            auto kpts = ExtractKeyPoints(frame->color_);
-            auto descs = ComputeDescriptors(kpts, frame->color_);
-            SetRef3dPoints(kpts, descs);
-
-            if (canvas) {
-                cv::drawKeypoints(*canvas, kpts, *canvas);
-            }
+            map_->AddObservation(*frame);
             state_ = kTracking;
             break;
         }
         case kTracking: {
-            auto kpts = ExtractKeyPoints(frame->color_);
-            auto descs = ComputeDescriptors(kpts, frame->color_);
-            auto matches = MatchWithReferenceFrame(descs);
-            if (canvas) {
-                cv::drawMatches(ref_frame_->color_, ref_keypoints_, frame->color_, kpts, matches, *canvas);
-            }
+            auto matches = frame->MatchWith(map_->GetAllDescriptors());
 
-            auto estimation = EstimatePosePnp(kpts, matches);
+            if (ui_)
+                ui_->DrawMatches(matches, map_->GetAllUVs(), 
+                [&](){
+                    vector<cv::Point2d> uvs;
+                    for (auto const& kp : frame->kpts_) {
+                      uvs.push_back(kp.pt);
+                    }
+                    return uvs;
+                }());
+
+            auto estimation = EstimatePosePnp(frame->kpts_, matches);
             if (estimation.score > 0) {
                 frame->T_c_w_ = estimation.T_c_r * ref_frame_->T_c_w_;
                 ref_frame_ = frame;
-                SetRef3dPoints(kpts, descs);
+                map_->AddObservation(*frame);
+                // SetRef3dPoints(frame->kpts_, frame->descriptors_);
+                
                 num_lost_ = 0;
             } else {
                 num_lost_++;
@@ -77,64 +72,15 @@ void sslam::VisualOdometry::Process(Frame::Ptr frame, Mat* canvas) {
         default:
             state_ = kInit;
     }
-}
-
-std::vector<cv::KeyPoint> sslam::VisualOdometry::ExtractKeyPoints(const Mat &color) {
-    std::vector<cv::KeyPoint> ret;
-    orb_->detect(color, ret);
-    return ret;
-}
-
-Mat sslam::VisualOdometry::ComputeDescriptors(std::vector<cv::KeyPoint> &keypoints, const Mat &color) {
-    Mat ret;
-    orb_->compute(color, keypoints, ret);
-    return ret;
-}
-
-void sslam::VisualOdometry::SetRef3dPoints(const vector <cv::KeyPoint> &keypoints, Mat const &descriptors) {
-    ref_pts_3d_.clear();
-    ref_keypoints_.clear();
-    ref_descriptors_ = Mat();
-
-    int cnt = 0;
-    for (size_t i = 0; i < keypoints.size(); i++) {
-        auto& p = keypoints[i];
-        double d = ref_frame_->GetDepth(p);
-        if (d > 0) {
-            auto p_cam = ref_frame_->camera_->pixel2camera(Vector2d{p.pt.x, p.pt.y}, d);
-            ref_pts_3d_.push_back(cv::Point3f(p_cam(0, 0), p_cam(1, 0), p_cam(2, 0)));
-            ref_keypoints_.push_back(p);
-            ref_descriptors_.push_back(descriptors.row(i));
-            cnt++;
-        }
-    }
-    cout << "set " << cnt << " ref points" << endl;
-}
-
-std::vector<cv::DMatch> sslam::VisualOdometry::MatchWithReferenceFrame(Mat const &descriptors) {
-    vector<cv::DMatch> matches;
-    auto matcher = cv::FlannBasedMatcher(new cv::flann::LshIndexParams(5,10,2));
-    //auto matcher = cv::BFMatcher(cv::NORM_HAMMING);
-    matcher.match(ref_descriptors_, descriptors, matches);
-
-    // filter
-    vector<cv::DMatch> ret;
-    auto min_dis = min_element(matches.begin(), matches.end())->distance;
-    for (auto& m : matches) {
-        if (m.distance < max(min_dis * match_ratio_, 30.f)) {
-            ret.push_back(m);
-        }
-    }
-    cout << "good matches: " << ret.size() << endl;
-    return ret;
+    cout << "map has " << map_->points_.size() << " points" << endl;
 }
 
 sslam::VisualOdometry::PoseEstimationResult
 sslam::VisualOdometry::EstimatePosePnp(std::vector<cv::KeyPoint> const &keypoints, std::vector<cv::DMatch> const &matches) {
-    vector<cv::Point3f> ref;
+    vector<cv::Point3d> ref;
     vector<cv::Point2d> cur;
     for (auto& m : matches) {
-        ref.push_back(ref_pts_3d_[m.queryIdx]);
+        ref.push_back(map_->points_[m.queryIdx].xyz);
         cur.push_back(keypoints[m.trainIdx].pt);
     }
 
@@ -160,7 +106,7 @@ sslam::VisualOdometry::EstimatePosePnp(std::vector<cv::KeyPoint> const &keypoint
     return {T, score, is_significantly_changed};
 }
 
-SE3 sslam::VisualOdometry::OptimizePoseBundleAdjustment(const vector<cv::Point3f> &ref_pts_3d,
+SE3 sslam::VisualOdometry::OptimizePoseBundleAdjustment(const vector<cv::Point3d> &ref_pts_3d,
                                                         const vector<cv::Point2d> &cur_pts_2d,
                                                         Mat const &inliers, SE3 const &T) const {
     // using bundle adjustment to optimize the pose

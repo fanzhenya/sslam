@@ -3,7 +3,7 @@
 # the tum dataset directory, change it to yours!
 
 # dataset_dir: /home/zhenyaf/data/slam/rgbd_dataset_freiburg1_xyz
-dataset_dir: /home/zhenyaf/data/slam/rgbd_dataset_freiburg1_desk
+dataset_dir: /mnt/hgfs/sleeping/datasets/rgbd_dataset_freiburg1_desk/
 # dataset_dir: /home/zhenyaf/data/slam/rgbd_dataset_freiburg1_desk2
 
 # camera intrinsics

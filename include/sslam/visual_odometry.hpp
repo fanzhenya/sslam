@@ -8,38 +8,30 @@
 
 #include <opencv/cv.hpp>
 #include "sslam/frame.hpp"
+#include "sslam/map.hpp"
 #include "sslam/config.hpp"
 #include "sslam/camera.hpp"
+#include "ui.hpp"
 
 namespace sslam {
 
 class VisualOdometry {
 public:
-    VisualOdometry(Config const& config);
+    VisualOdometry(Config const& config, std::shared_ptr<Map> map, std::shared_ptr<Ui> ui);
     // process one @frame, optionally draw visualizations on @canvas
-    void Process(Frame::Ptr frame, Mat* canvas = nullptr);
+    void Process(Frame::Ptr frame);
 
 private:
     enum {kInit, kTracking, kLost} state_;
     int num_lost_;
+    std::shared_ptr<Map> map_;
+    std::shared_ptr<Ui> ui_;
 
 
     Frame::Ptr ref_frame_;                   // reference frame
     std::vector<cv::Point3f> ref_pts_3d_;    // reference 3D points in ref frame coordinates
     std::vector<cv::KeyPoint> ref_keypoints_;
     Mat ref_descriptors_;                    // descriptors of those ref_pts_3d_. index-by-index correspondence
-
-
-    struct OrbResult {
-        std::vector<cv::KeyPoint> keypoints;
-        Mat descriptors;
-    };
-    cv::Ptr<cv::ORB> orb_;
-    std::vector<cv::KeyPoint> ExtractKeyPoints(const Mat &color);
-    Mat ComputeDescriptors(std::vector<cv::KeyPoint> &keypoints, const Mat &color);
-    void SetRef3dPoints(const std::vector<cv::KeyPoint> &keypoints, Mat const &descriptors);
-
-    std::vector<cv::DMatch> MatchWithReferenceFrame(Mat const &descriptors);
 
     struct PoseEstimationResult {
         // Tcw = T_c_r * Trw, where Trw is T of ref frame, Tcw is T of current frame.
@@ -50,7 +42,7 @@ private:
     };
     PoseEstimationResult
     EstimatePosePnp(std::vector<cv::KeyPoint> const &keypoints, std::vector<cv::DMatch> const &matches);
-    SE3 OptimizePoseBundleAdjustment(const std::vector<cv::Point3f> &ref_pts_3d,
+    SE3 OptimizePoseBundleAdjustment(const std::vector<cv::Point3d> &ref_pts_3d,
                                      const std::vector<cv::Point2d> &cur_pts_2d, Mat const &inliers, SE3 const&T) const;
 
     // parameters read from config

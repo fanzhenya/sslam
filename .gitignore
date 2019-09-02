@@ -2,4 +2,6 @@
 bin/
 cmake-*/
 lib/
+build/
+.vscode
 

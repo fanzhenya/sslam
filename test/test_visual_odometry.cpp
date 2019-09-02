@@ -6,8 +6,9 @@
 #include <fstream>
 #include "sslam/frame.hpp"
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/viz.hpp>
+//#include <opencv2/viz.hpp>
 #include <sslam/config.hpp>
+#include <sslam/ui.hpp>
 #include <sslam/visual_odometry.hpp>
 
 using namespace std;
@@ -28,32 +29,34 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    VisualOdometry vo(config);
+    auto map = make_shared<Map>(config);
+    auto ui = make_shared<Ui>(config);
+    VisualOdometry vo(config, map, ui);
     Camera::Ptr camera = Camera::FromConfig(config);
 
     // visualization
-    cv::viz::Viz3d vis("Visual Odometry");
-    cv::viz::WCoordinateSystem world_coor(1.0), camera_coor(0.5);
+    //cv::viz::Viz3d vis("Visual Odometry");
+    //cv::viz::WCoordinateSystem world_coor(1.0), camera_coor(0.5);
 
-    cv::Point3d cam_pos(0, -3.0, -5.0), cam_focal_point(0,0,0), cam_y_dir(0,1,0);
-    cv::Affine3d cam_pose = cv::viz::makeCameraPose( cam_pos, cam_focal_point, cam_y_dir );
-    vis.setViewerPose( cam_pose );
+    // cv::Point3d cam_pos(0, -3.0, -5.0), cam_focal_point(0,0,0), cam_y_dir(0,1,0);
+    // cv::Affine3d cam_pose = cv::viz::makeCameraPose( cam_pos, cam_focal_point, cam_y_dir );
+    // vis.setViewerPose( cam_pose );
 
-    world_coor.setRenderingProperty(cv::viz::LINE_WIDTH, 2.0);
-    camera_coor.setRenderingProperty(cv::viz::LINE_WIDTH, 1.0);
-    vis.showWidget( "World", world_coor );
-    vis.showWidget( "Camera", camera_coor );
+    // world_coor.setRenderingProperty(cv::viz::LINE_WIDTH, 2.0);
+    // camera_coor.setRenderingProperty(cv::viz::LINE_WIDTH, 1.0);
+    // vis.showWidget( "World", world_coor );
+    // vis.showWidget( "Camera", camera_coor );
 
     for (string each; getline(associate_file, each); ) {
-        Frame::Ptr frame = Frame::FromAssociateRecord(each, dataset_dir, camera);
+        Frame::Ptr frame = Frame::FromAssociateRecord(config, each, dataset_dir, camera);
         cout << *frame << endl;
 
-        auto canvas = frame->color_.clone();
-        vo.Process(frame, &canvas);
+        ui->NewCanvas(frame->color_.clone());
+        vo.Process(frame);
+        ui->Refresh();
 
-        cv::imshow("color", frame->color_);
-        cv::imshow("canvas", canvas);
-        cv::waitKey(1);
+        // cv::imshow("color", frame->color_);
+        cv::waitKey(0);
 
         auto pose = frame->T_c_w_.inverse();
         cout << pose << endl;
@@ -69,8 +72,8 @@ int main(int argc, char** argv) {
             )
         );
         // show the map and the camera pose
-        vis.setWidgetPose("Camera", M);
-        vis.spinOnce(1, false);
+        // vis.setWidgetPose("Camera", M);
+        // vis.spinOnce(1, false);
     }
     return 0;
 

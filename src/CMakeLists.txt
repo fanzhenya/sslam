@@ -23,7 +23,7 @@ target_include_directories(sslam
 target_link_libraries(sslam
     PUBLIC
         ${OpenCV_LIBS}
-        ${Sophus_LIBRARIES}
+        Sophus
 
     PRIVATE
         g2o_core g2o_stuff g2o_types_sba
