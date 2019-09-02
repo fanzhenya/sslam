@@ -5,7 +5,6 @@
 #ifndef SSLAM_VISUAL_ODOMETRY_HPP
 #define SSLAM_VISUAL_ODOMETRY_HPP
 
-
 #include <opencv/cv.hpp>
 #include "sslam/frame.hpp"
 #include "sslam/map.hpp"
@@ -18,7 +17,6 @@ namespace sslam {
 class VisualOdometry {
 public:
     VisualOdometry(Config const& config, std::shared_ptr<Map> map, std::shared_ptr<Ui> ui);
-    // process one @frame, optionally draw visualizations on @canvas
     void Process(Frame::Ptr frame);
 
 private:
@@ -28,15 +26,10 @@ private:
     std::shared_ptr<Ui> ui_;
 
 
-    Frame::Ptr ref_frame_;                   // reference frame
-    std::vector<cv::Point3f> ref_pts_3d_;    // reference 3D points in ref frame coordinates
-    std::vector<cv::KeyPoint> ref_keypoints_;
-    Mat ref_descriptors_;                    // descriptors of those ref_pts_3d_. index-by-index correspondence
+    Camera::Ptr camera_;
 
     struct PoseEstimationResult {
-        // Tcw = T_c_r * Trw, where Trw is T of ref frame, Tcw is T of current frame.
-        // T_c_r is T from ref to current frame`
-        SE3 T_c_r; // pose relative to reference frame
+        SE3 T;
         double score;
         bool is_significant_changed;
     };
@@ -46,10 +39,6 @@ private:
                                      const std::vector<cv::Point2d> &cur_pts_2d, Mat const &inliers, SE3 const&T) const;
 
     // parameters read from config
-    int num_of_features_;   // number of features
-    double scale_factor_;   // scale in image pyramid
-    int level_pyramid_;     // number of pyramid levels
-    float match_ratio_;      // ratio for selecting  good matches
     int max_num_lost_;      // max number of continuous lost times
     int min_inliers_;       // minimum inliers
 

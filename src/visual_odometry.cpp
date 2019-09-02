@@ -33,12 +33,13 @@ sslam::VisualOdometry::VisualOdometry(Config const& config, std::shared_ptr<Map>
 void sslam::VisualOdometry::Process(Frame::Ptr frame) {
     switch (state_) {
         case kInit: {
-            ref_frame_ = frame;
+            camera_ = frame->camera_;
             map_->AddObservation(*frame);
             state_ = kTracking;
             break;
         }
         case kTracking: {
+            // "Reloc" on map
             auto matches = map_->MatchWith(*frame);
             cout << "good matches: " << matches.size() << endl;
 
@@ -54,8 +55,7 @@ void sslam::VisualOdometry::Process(Frame::Ptr frame) {
 
             auto estimation = EstimatePosePnp(frame->kpts_, matches);
             if (estimation.score > 0) {
-                frame->T_c_w_ = estimation.T_c_r * ref_frame_->T_c_w_;
-                ref_frame_ = frame;
+                frame->T_c_w_ = estimation.T;
                 map_->AddObservation(*frame);
                 num_lost_ = 0;
             } else {
@@ -84,7 +84,7 @@ sslam::VisualOdometry::EstimatePosePnp(std::vector<cv::KeyPoint> const &keypoint
     }
 
     Mat r_vec, t_vec, inliers;
-    cv::solvePnPRansac(ref, cur, ref_frame_->camera_->GetK(), Mat{}, r_vec, t_vec, false, 100, 4.0, 0.99, inliers);
+    cv::solvePnPRansac(ref, cur, camera_->GetK(), Mat{}, r_vec, t_vec, false, 100, 4.0, 0.99, inliers);
     cout << "PnpRansac inlisers: " << inliers.rows << endl;
 
     SE3 T(
@@ -131,7 +131,7 @@ SE3 sslam::VisualOdometry::OptimizePoseBundleAdjustment(const vector<cv::Point3d
         EdgeProjectXYZ2UVPoseOnly* edge = new EdgeProjectXYZ2UVPoseOnly();
         edge->setId(i);
         edge->setVertex(0, pose);
-        edge->camera_ = ref_frame_->camera_.get();
+        edge->camera_ = camera_.get();
         edge->point_ = Vector3d( ref_pts_3d[index].x, ref_pts_3d[index].y, ref_pts_3d[index].z );
         edge->setMeasurement( Vector2d(cur_pts_2d[index].x, cur_pts_2d[index].y) );
         edge->setInformation( Eigen::Matrix2d::Identity() );
@@ -139,8 +139,8 @@ SE3 sslam::VisualOdometry::OptimizePoseBundleAdjustment(const vector<cv::Point3d
     }
 
     optimizer.initializeOptimization();
-    optimizer.setVerbose(true);
-    optimizer.optimize(10);
+    // optimizer.setVerbose(true);
+    optimizer.optimize(5);
 
     return SE3 (
             pose->estimate().rotation(),

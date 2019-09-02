@@ -35,7 +35,6 @@ public:
     Mat color_;
     Mat depth_;
 
-    Config const& config_;
     std::vector<cv::KeyPoint> kpts_;
     cv::Mat descriptors_;
 
@@ -48,6 +47,7 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const Frame &frame);
 
 private:
+    Config const& config_;
     static std::atomic<uint64_t> factory_id_;
     Frame(Config const& config, uint64_t id, double time_stamp=0, SE3 T_c_w=SE3(), /*Camera::Ptr camera=nullptr,*/ Mat color=Mat(), Mat depth=Mat() )
             : config_(config), id_(id), time_stamp_(time_stamp), T_c_w_(T_c_w), /*camera_(camera),*/ color_(color), depth_(depth) {

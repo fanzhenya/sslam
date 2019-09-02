@@ -30,8 +30,8 @@ public:
         auto& p = keypoints[i];
         double d = frame.GetDepthAt(p);
         if (d <= 0) continue;
-        auto p_cam = frame.camera_->pixel2camera(Vector2d{p.pt.x, p.pt.y}, d);
-        points_.push_back({cv::Point3d(p_cam(0, 0), p_cam(1, 0), p_cam(2, 0)),
+        auto p_world = frame.camera_->pixel2world(Vector2d{p.pt.x, p.pt.y}, frame.T_c_w_, d);
+        points_.push_back({cv::Point3d(p_world(0, 0), p_world(1, 0), p_world(2, 0)),
                            descriptors.row(i),
                            p.pt,
                            frame.color_.at<cv::Vec3b>(p.pt)
