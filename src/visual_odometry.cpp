@@ -93,9 +93,9 @@ sslam::VisualOdometry::EstimatePosePnp(std::vector<cv::KeyPoint> const &keypoint
             Vector3d(t_vec.at<double>(0, 0), t_vec.at<double>(1, 0),  t_vec.at<double>(2, 0))
     );
 
-    cout << "before BA " << T << endl;
+    // cout << "before BA " << T << endl;
     T = OptimizePoseBundleAdjustment(ref, cur, inliers, T);
-    cout << "after  BA " << T << endl;
+    // cout << "after  BA " << T << endl;
 
     double score = inliers.rows < min_inliers_ ? 0 : // too few inliners
             T.log().norm() > 5.0 ? 0 : 1; // motion is too large

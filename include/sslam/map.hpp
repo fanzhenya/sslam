@@ -15,6 +15,7 @@ public:
     cv::Point3d xyz;
     cv::Mat descriptor;
     cv::Point2d uv;
+    cv::Vec3b color;
   };
 
   Map(Config const& config) : config_(config){};
@@ -32,7 +33,9 @@ public:
         auto p_cam = frame.camera_->pixel2camera(Vector2d{p.pt.x, p.pt.y}, d);
         points_.push_back({cv::Point3d(p_cam(0, 0), p_cam(1, 0), p_cam(2, 0)),
                            descriptors.row(i),
-                           p.pt});
+                           p.pt,
+                           frame.color_.at<cv::Vec3b>(p.pt)
+                           });
     }
   }
 
@@ -67,6 +70,14 @@ public:
     std::vector<cv::Point2d> ret;
     for (auto const& p : points_)
       ret.push_back(p.uv);
+    return ret;
+  }
+
+  std::vector<Eigen::Vector3d> GetAllXyzs() {
+    std::vector<Eigen::Vector3d> ret;
+    for (auto const& p : points_) {
+      ret.push_back({p.xyz.x, p.xyz.y, p.xyz.z});
+    }
     return ret;
   }
 

@@ -43,8 +43,6 @@ public:
     static std::shared_ptr<Frame>
     FromAssociateRecord(const Config &config, const std::string &line, const std::string &dataset_dir = "/", Camera::Ptr camera = {});
 
-    std::vector<cv::DMatch> MatchWith(cv::Mat const& descriptors);
-
     double GetDepthAt(cv::KeyPoint const& p) const;
 
     friend std::ostream &operator<<(std::ostream &os, const Frame &frame);

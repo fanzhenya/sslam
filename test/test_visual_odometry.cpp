@@ -53,12 +53,13 @@ int main(int argc, char** argv) {
 
         ui->NewCanvas(frame->color_.clone());
         vo.Process(frame);
-        ui->Refresh();
 
         // cv::imshow("color", frame->color_);
-        cv::waitKey(0);
+        cv::waitKey(1);
 
         auto pose = frame->T_c_w_.inverse();
+
+        ui->Draw({pose}, map->points_);
         cout << pose << endl;
 
         cv::Affine3d M(

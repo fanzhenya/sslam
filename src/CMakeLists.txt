@@ -3,6 +3,7 @@ add_library(sslam STATIC
         frame.cpp
         config.cpp
         camera.cpp
+        ui.cpp
         g2o_types.cpp
         g2o_types.hpp
         )
@@ -18,6 +19,7 @@ target_include_directories(sslam
 
     PRIVATE
         ${G2O_INCLUDE_DIRS}
+        ${Pangolin_INCLUDE_DIRS}
 )
 
 target_link_libraries(sslam
@@ -26,5 +28,6 @@ target_link_libraries(sslam
         Sophus
 
     PRIVATE
+        ${Pangolin_LIBRARIES}
         g2o_core g2o_stuff g2o_types_sba
 )
